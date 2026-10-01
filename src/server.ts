@@ -4,7 +4,6 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
 import multipart from '@fastify/multipart';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { nanoid } from 'nanoid';
@@ -39,11 +38,51 @@ type Auth = { id: string; email: string };
 function sign(user: Auth) {
   return jwt.sign(user, JWT_SECRET, { expiresIn: '30d' });
 }
+
+// Cookie-only authentication: there is no registration/login form.
+// A first visit receives an anonymous account and a long-lived httpOnly cookie.
+// The cookie is the only credential used by the panel/API afterwards.
 function auth(req: any): Auth {
+  const attached = req.flexAuth as Auth | undefined;
+  if (attached) return attached;
   const token = req.cookies.session;
   if (!token) throw new Error('UNAUTHORIZED');
   return jwt.verify(token, JWT_SECRET) as Auth;
 }
+
+app.addHook('preHandler', async (req: any, reply) => {
+  if (!req.url.startsWith('/api/') || req.url.startsWith('/api/health')) return;
+
+  try {
+    const token = req.cookies.session;
+    if (token) {
+      const payload = jwt.verify(token, JWT_SECRET) as Auth;
+      const existing = await prisma.user.findUnique({ where: { id: payload.id } });
+      if (existing) {
+        req.flexAuth = { id: existing.id, email: existing.email };
+        return;
+      }
+    }
+  } catch {
+    // Expired/invalid cookie: silently issue a fresh anonymous session below.
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      email: `cookie_${nanoid(16)}@flexnode.local`,
+      passwordHash: `cookie:${nanoid(32)}`
+    }
+  });
+  const session = { id: user.id, email: user.email };
+  reply.setCookie('session', sign(session), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365
+  });
+  req.flexAuth = session;
+});
 function safePath(base: string, input: string) {
   const resolved = path.resolve(base, input || '.');
   if (resolved !== path.resolve(base) && !resolved.startsWith(path.resolve(base) + path.sep)) {
@@ -62,30 +101,6 @@ function run(cmd: string, args: string[]) {
 }
 
 app.get('/api/health', async () => ({ ok: true, service: 'Flex Node' }));
-
-app.post('/api/auth/register', async (req, reply) => {
-  const body = req.body as any;
-  if (!body?.email || !body?.password || body.password.length < 8) return reply.code(400).send({ error: 'Email и пароль от 8 символов обязательны' });
-  const exists = await prisma.user.findUnique({ where: { email: body.email.toLowerCase() } });
-  if (exists) return reply.code(409).send({ error: 'Пользователь уже существует' });
-  const passwordHash = await bcrypt.hash(body.password, 12);
-  const user = await prisma.user.create({ data: { email: body.email.toLowerCase(), passwordHash } });
-  reply.setCookie('session', sign({ id: user.id, email: user.email }), { httpOnly: true, sameSite: 'lax', secure: false, path: '/', maxAge: 60*60*24*30 });
-  return { id: user.id, email: user.email };
-});
-
-app.post('/api/auth/login', async (req, reply) => {
-  const body = req.body as any;
-  const user = await prisma.user.findUnique({ where: { email: String(body?.email || '').toLowerCase() } });
-  if (!user || !(await bcrypt.compare(body?.password || '', user.passwordHash))) return reply.code(401).send({ error: 'Неверный логин или пароль' });
-  reply.setCookie('session', sign({ id: user.id, email: user.email }), { httpOnly: true, sameSite: 'lax', secure: false, path: '/', maxAge: 60*60*24*30 });
-  return { id: user.id, email: user.email };
-});
-
-app.post('/api/auth/logout', async (_req, reply) => {
-  reply.clearCookie('session', { path: '/' });
-  return { ok: true };
-});
 
 app.get('/api/me', async (req, reply) => {
   try { return auth(req); } catch { return reply.code(401).send({ error: 'UNAUTHORIZED' }); }
