@@ -93,13 +93,16 @@ app.post('/api/servers', async (req, reply) => {
     const u = auth(req);
     const body = req.body as any;
     const port = Number(body.port);
-    const slots = Number(body.slots || 100);
+    const slots = Number(body.slots || 100);\n    const memoryMb = Math.min(8192, Math.max(128, Number(body.memoryMb || 512)));\n    const cpuCores = Math.min(8, Math.max(0.10, Number(body.cpuCores || 0.5)));
     if (!body.name || !Number.isInteger(port) || port < 1000 || port > 65535) return reply.code(400).send({ error: 'Некорректное имя или порт' });
     const slug = `${body.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${nanoid(6).toLowerCase()}`;
     const rootPath = path.join(ROOT, slug);
     await mkdir(rootPath, { recursive: true });
     await writeFile(path.join(rootPath, 'server.cfg'), `hostname ${body.name}\nmaxplayers ${slots}\nport ${port}\nrcon_password change-me\n`);
-    const server = await prisma.server.create({ data: { userId: u.id, name: body.name, slug, slots, port, rootPath } });
+    const server = await prisma.server.create({ data: {
+      userId: u.id, name: body.name, slug, slots, port, rootPath,
+      memoryMb, cpuCores, workerId: process.env.DEFAULT_WORKER_ID || 'worker-1'
+    } });
     return server;
   } catch (e:any) { return reply.code(400).send({ error: e.message }); }
 });
@@ -111,20 +114,11 @@ app.post('/api/servers/:id/:action', async (req, reply) => {
     if (!s) return reply.code(404).send({ error: 'SERVER_NOT_FOUND' });
     const action = (req.params as any).action;
     const cname = `flex-${s.slug}`;
-    if (action === 'start') {
-      await run('docker', ['rm','-f',cname]);
-      const r = await run('docker', ['run','-d','--name',cname,'--restart','unless-stopped','--network',process.env.DOCKER_NETWORK || 'bridge','-p',`${s.port}:${s.port}/udp`,'-v',`${s.rootPath}:/server`,s.image]);
-      if (r.code !== 0) return reply.code(500).send({ error: r.stderr });
-      const updated = await prisma.server.update({ where: { id: s.id }, data: { containerId: r.stdout.trim(), status: 'RUNNING' } });
-      return updated;
-    }
-    if (action === 'stop') {
-      await run('docker', ['stop', cname]);
-      return prisma.server.update({ where: { id: s.id }, data: { status: 'STOPPED' } });
-    }
+    if (action === 'start') return prisma.server.update({ where:{id:s.id}, data:{status:'RUNNING'} });
+    if (action === 'stop') return prisma.server.update({ where:{id:s.id}, data:{status:'STOPPED'} });
     if (action === 'restart') {
-      await run('docker', ['restart', cname]);
-      return prisma.server.update({ where: { id: s.id }, data: { status: 'RUNNING' } });
+      await prisma.server.update({ where:{id:s.id}, data:{status:'STOPPED'} });
+      return prisma.server.update({ where:{id:s.id}, data:{status:'RUNNING'} });
     }
     return reply.code(400).send({ error: 'UNKNOWN_ACTION' });
   } catch (e:any) { return reply.code(400).send({ error: e.message }); }

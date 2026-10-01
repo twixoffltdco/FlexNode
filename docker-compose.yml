@@ -6,11 +6,27 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      - flex_servers:/srv/flex-node/servers
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks: [flex-node]
+
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WORKER_ID: worker-1
+      SERVER_ROOT: /srv/flex-node/servers
+      DOCKER_NETWORK: flex-node
+    volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - flex_servers:/srv/flex-node/servers
     depends_on:
       mysql:
         condition: service_healthy
+    networks: [flex-node]
 
   mysql:
     image: mysql:8.4
@@ -23,11 +39,16 @@ services:
     volumes:
       - flex_mysql:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "flex", "-pchange-me"]
+      test: ["CMD","mysqladmin","ping","-h","localhost","-u","flex","-pchange-me"]
       interval: 5s
       timeout: 5s
       retries: 20
+    networks: [flex-node]
 
 volumes:
   flex_mysql:
   flex_servers:
+
+networks:
+  flex-node:
+    name: flex-node

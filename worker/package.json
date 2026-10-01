@@ -1,0 +1,8 @@
+{
+  "name":"flex-node-worker",
+  "private":true,
+  "type":"module",
+  "scripts":{"dev":"tsx watch src/worker.ts","start":"node dist/worker.js","build":"tsc"},
+  "dependencies":{"@prisma/client":"^6.16.2","dotenv":"^17.2.2","dockerode":"^4.0.9"},
+  "devDependencies":{"@types/node":"^24.5.2","@types/dockerode":"^3.3.31","prisma":"^6.16.2","tsx":"^4.19.2","typescript":"^5.9.2"}
+}

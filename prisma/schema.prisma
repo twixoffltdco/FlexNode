@@ -27,6 +27,12 @@ model Server {
   containerId  String?
   status       String   @default("STOPPED")
   rootPath     String
+  workerId     String   @default("worker-1")
+  memoryMb     Int      @default(512)
+  cpuCores     Float    @default(0.5)
+  memoryUsageMb Int     @default(0)
+  cpuUsageNs   BigInt   @default(0)
+  lastHeartbeat DateTime?
   mysqlHost    String?
   mysqlPort    Int?
   mysqlDb      String?
