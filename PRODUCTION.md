@@ -74,3 +74,10 @@ Flex Node должен использовать совместимые server im
 - TLS;
 - отдельный MySQL;
 - секреты только через environment/secret manager.
+
+## Layero
+
+FlexNode is a Node/Fastify runtime application, not a static HTML site. The repository now contains `layero.json` with `runtime: "node_web"`, `npm run build`, `npm start` and Node 22. In the Layero dashboard do not force the project to `static`; use the Node runtime. Layero's runtime containers are serverless and can be stopped when idle, so the Layero instance is suitable for the control-plane web/API, not as the 24/7 game Worker.
+
+For the game Worker, deploy `docker-compose.production.yml` on a VPS/dedicated server with Docker, persistent disk and public UDP ports.
+

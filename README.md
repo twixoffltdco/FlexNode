@@ -1,6 +1,6 @@
 # Flex Node
 
-Реальный Node.js-проект хостинга SAMP/CRMP.
+Node.js control-plane для игрового хостинга SAMP/CRMP с отдельным Docker Worker.
 
 ## Архитектура
 
@@ -42,3 +42,7 @@ Docker socket даёт приложению высокие права. Для п
 - `PRODUCTION.md` — deployment requirements and limits.
 
 The game Worker must run on infrastructure that supports long-running Docker containers and public UDP ports. A free serverless runtime with 256 MB RAM is not a suitable game Worker.
+
+## Layero
+
+Для панели/API используйте Node runtime (`layero.json`), а не static. Игровые процессы должны работать на отдельном Worker VPS.

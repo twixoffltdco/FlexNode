@@ -1,0 +1,7 @@
+{
+  "$schema": "https://layero.ru/schema/layero-v2.json",
+  "runtime": "node_web",
+  "buildCommand": "npm run build",
+  "startCommand": "npm start",
+  "nodeVersion": "22"
+}
