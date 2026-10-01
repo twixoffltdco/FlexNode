@@ -32,3 +32,13 @@ Docker socket даёт приложению высокие права. Для п
 ## Публичный каталог
 
 Каталог публичных SAMP/CRMP серверов можно добавить отдельным crawler-модулем: он собирает только общедоступные сведения (IP, порт, название, online/slots) и обновляет их по расписанию. Управление чужими серверами без разрешения в Flex Node не предусматривается.
+
+
+## Production split
+
+- `src/server.ts` — control-plane API/panel.
+- `worker/` — privileged game runtime worker.
+- `docker-compose.production.yml` — deployment for a real game Worker Node.
+- `PRODUCTION.md` — deployment requirements and limits.
+
+The game Worker must run on infrastructure that supports long-running Docker containers and public UDP ports. A free serverless runtime with 256 MB RAM is not a suitable game Worker.

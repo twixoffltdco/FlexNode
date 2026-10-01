@@ -93,7 +93,8 @@ app.post('/api/servers', async (req, reply) => {
     const u = auth(req);
     const body = req.body as any;
     const port = Number(body.port);
-    const slots = Number(body.slots || 100);\n    const memoryMb = Math.min(8192, Math.max(128, Number(body.memoryMb || 512)));\n    const cpuCores = Math.min(8, Math.max(0.10, Number(body.cpuCores || 0.5)));
+    const slots = Number(body.slots || 100);
+    const memoryMb = Math.min(8192, Math.max(128, Number(body.memoryMb || 512)));\n    const cpuCores = Math.min(8, Math.max(0.10, Number(body.cpuCores || 0.5)));
     if (!body.name || !Number.isInteger(port) || port < 1000 || port > 65535) return reply.code(400).send({ error: 'Некорректное имя или порт' });
     const slug = `${body.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-${nanoid(6).toLowerCase()}`;
     const rootPath = path.join(ROOT, slug);

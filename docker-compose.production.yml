@@ -1,0 +1,30 @@
+# Production game node.
+# Run this on a VPS/dedicated server with a static public IPv4.
+services:
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WORKER_ID: ${WORKER_ID:-worker-1}
+      SERVER_ROOT: /srv/flex-node/servers
+      DOCKER_NETWORK: flex-node
+      MIN_PORT: ${MIN_PORT:-7777}
+      MAX_PORT: ${MAX_PORT:-8777}
+      MAX_RAM_MB: ${MAX_RAM_MB:-65536}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - flex_servers:/srv/flex-node/servers
+    networks: [flex-node]
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+
+networks:
+  flex-node:
+    name: flex-node
+
+volumes:
+  flex_servers:

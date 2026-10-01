@@ -7,9 +7,12 @@ const docker = new Docker({socketPath:'/var/run/docker.sock'});
 const WORKER_ID = process.env.WORKER_ID || 'worker-1';
 const ROOT = process.env.SERVER_ROOT || '/srv/flex-node/servers';
 const NETWORK = process.env.DOCKER_NETWORK || 'flex-node';
+const MAX_RAM_MB = Number(process.env.MAX_RAM_MB || 65536);
+const MIN_PORT = Number(process.env.MIN_PORT || 7777);
+const MAX_PORT = Number(process.env.MAX_PORT || 8777);
 
 function limits(s:any){
-  const ram = Math.max(128, Number(s.memoryMb || 512));
+  const ram = Math.min(MAX_RAM_MB, Math.max(128, Number(s.memoryMb || 512)));
   const cpu = Math.max(0.10, Number(s.cpuCores || 0.5));
   return {
     Memory: ram * 1024 * 1024,
@@ -80,6 +83,7 @@ async function metrics(){
       const cpu=Number((stats as any).cpu_stats?.cpu_usage?.total_usage||0);
       await prisma.server.update({where:{id:s.id},data:{
         containerId:info.Id,
+        status: info.State.Running ? 'RUNNING' : 'STOPPED',
         memoryUsageMb:Math.round(mem/1024/1024),
         cpuUsageNs:cpu,
         lastHeartbeat:new Date()
