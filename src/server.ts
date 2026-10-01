@@ -19,6 +19,16 @@ await app.register(cors, { origin: true, credentials: true });
 await app.register(formbody);
 await app.register(multipart);
 
+// Public frontend: Layero probes GET / and the browser needs the landing page.
+// Keep the existing API unchanged and serve the bundled HTML files directly.
+const PUBLIC_DIR = path.resolve(process.cwd(), 'public');
+for (const page of ['index.html', 'panel.html', 'files.html']) {
+  const route = page === 'index.html' ? '/' : `/${page}`;
+  app.get(route, async (_req, reply) => {
+    return reply.type('text/html; charset=utf-8').send(await readFile(path.join(PUBLIC_DIR, page)));
+  });
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const ROOT = process.env.SERVER_ROOT || '/srv/flex-node/servers';
 const PUBLIC_HOST = process.env.PUBLIC_HOST || 'localhost';
